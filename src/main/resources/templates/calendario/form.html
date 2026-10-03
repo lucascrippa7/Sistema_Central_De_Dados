@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${modoEdicao} ? 'Editar evento' : 'Novo evento'">Evento</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/tema.css" rel="stylesheet">
+</head>
+<body>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+
+<div class="container pb-5" style="max-width: 34rem;">
+    <h5 class="mb-3" th:text="${modoEdicao} ? 'Editar evento' : 'Novo evento'">Evento</h5>
+
+    <div class="alert alert-danger py-2" th:if="${erro}" th:text="${erro}"></div>
+
+    <form th:action="${modoEdicao} ? @{/calendario/{id}/editar(id=${evento.id})} : @{/calendario/novo}"
+          th:object="${evento}" method="post">
+
+        <input type="hidden" th:if="${modoEdicao}" th:field="*{id}">
+
+        <div class="mb-3">
+            <label class="form-label">Titulo *</label>
+            <input type="text" th:field="*{titulo}" class="form-control"
+                   th:classappend="${#fields.hasErrors('titulo')} ? 'is-invalid'">
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('titulo')}" th:errors="*{titulo}"></div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Tipo *</label>
+                <select id="campoTipo" th:field="*{tipo}" class="form-select"
+                        th:classappend="${#fields.hasErrors('tipo')} ? 'is-invalid'">
+                    <option value="">Selecione</option>
+                    <option value="ENTREGA_IMPOSTO">Entrega de imposto</option>
+                    <option value="REUNIAO">Reuniao</option>
+                    <option value="EVENTO">Evento</option>
+                </select>
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('tipo')}" th:errors="*{tipo}"></div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Data *</label>
+                <input type="date" th:field="*{data}" class="form-control"
+                       th:classappend="${#fields.hasErrors('data')} ? 'is-invalid'">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('data')}" th:errors="*{data}"></div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Horario</label>
+                <input type="time" th:field="*{horario}" class="form-control">
+            </div>
+        </div>
+
+        <div class="mb-3" id="campoCliente">
+            <label class="form-label">
+                Cliente <span id="rotuloClienteObrigatorio" class="text-danger" style="display:none;">*</span>
+            </label>
+            <select name="clienteId" class="form-select">
+                <option value="">Nenhum</option>
+                <option th:each="cliente : ${clientes}"
+                        th:value="${cliente.id}"
+                        th:text="${cliente.razaoSocial}"
+                        th:selected="${evento.clienteId != null and evento.clienteId == cliente.id}">
+                </option>
+            </select>
+            <div class="form-text">Obrigatorio quando o tipo e Entrega de imposto.</div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Descricao</label>
+            <textarea th:field="*{descricao}" class="form-control" rows="3"></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Avisar com quantos dias de antecedencia</label>
+            <input type="text" name="lembretesTexto" th:value="${lembretesTexto}" class="form-control"
+                   placeholder="Ex: 3, 4">
+            <div class="form-text">Numeros separados por virgula. O aviso no proprio dia do evento e sempre enviado, mesmo sem preencher aqui.</div>
+        </div>
+
+        <!-- Repetir mensalmente: so faz sentido escolher na criacao. Ao editar uma
+             ocorrencia ja existente, o campo recorrente e ignorado pelo service
+             (a configuracao da serie so muda via "Pausar recorrencia" abaixo). -->
+        <div class="form-check form-switch mb-4" th:unless="${modoEdicao}">
+            <input class="form-check-input" type="checkbox" th:field="*{recorrente}" role="switch">
+            <label class="form-check-label">Repetir todo mes neste mesmo dia</label>
+        </div>
+
+        <div class="alert alert-info py-2 small mb-4" th:if="${modoEdicao and evento.serieId != null}">
+            Este evento faz parte de uma serie recorrente (todo dia
+            <span th:text="${diaMesSerie}">1</span> do mes).
+            <span th:if="${serieAtivaAtual}"> Continua gerando os proximos meses automaticamente.</span>
+            <span th:unless="${serieAtivaAtual}"> A recorrencia ja foi interrompida -- nao gera mais meses novos.</span>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Salvar</button>
+        <a th:href="@{/calendario}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+
+    <div th:if="${modoEdicao}" class="float-end d-flex gap-2">
+        <form th:if="${evento.serieId != null and serieAtivaAtual}"
+              th:action="@{/calendario/serie/{serieId}/pausar(serieId=${evento.serieId})}" method="post"
+              onsubmit="return confirm('Parar a recorrencia? Os eventos ja gerados continuam no calendario, mas nenhum mes novo sera criado.');">
+            <button type="submit" class="btn btn-outline-warning">Parar recorrencia</button>
+        </form>
+        <form th:action="@{/calendario/{id}/excluir(id=${evento.id})}" method="post"
+              th:attr="onsubmit=${evento.serieId != null and evento.id == evento.serieId}
+                  ? 'return confirm(\'Este e o evento original da serie -- excluir vai remover TODAS as ocorrencias ja geradas dela. Continuar?\');'
+                  : 'return confirm(\'Excluir este evento? Essa acao nao pode ser desfeita.\');'">
+            <!-- evento.data pode estar nulo aqui se a validacao falhou nesse
+                 campo (formulario sendo reexibido com erro) -- nesse caso caimos
+                 no mes atual, so pra nao quebrar a pagina; nao afeta o cliente,
+                 servico, etc. -->
+            <input type="hidden" name="ano" th:value="${evento.data != null ? evento.data.year : T(java.time.YearMonth).now().year}">
+            <input type="hidden" name="mes" th:value="${evento.data != null ? evento.data.monthValue : T(java.time.YearMonth).now().monthValue}">
+            <button type="submit" class="btn btn-outline-danger">Excluir</button>
+        </form>
+    </div>
+</div>
+
+<script th:replace="~{fragments/navbar :: scriptTema}"></script>
+<script th:replace="~{fragments/navbar :: scriptNotificacoes}"></script>
+<script>
+    // Deixa o campo de cliente visualmente marcado como obrigatorio quando o
+    // tipo selecionado e Entrega de imposto -- a validacao de verdade (que
+    // impede salvar sem cliente) acontece no EventoApplicationService.
+    const campoTipo = document.getElementById('campoTipo');
+    const rotuloObrigatorio = document.getElementById('rotuloClienteObrigatorio');
+
+    function atualizarRotuloCliente() {
+        rotuloObrigatorio.style.display = campoTipo.value === 'ENTREGA_IMPOSTO' ? 'inline' : 'none';
+    }
+    campoTipo.addEventListener('change', atualizarRotuloCliente);
+    atualizarRotuloCliente();
+</script>
+</body>
+</html>

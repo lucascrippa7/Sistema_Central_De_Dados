@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Auditoria - System LC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/tema.css" rel="stylesheet">
+</head>
+<body>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+
+<div class="container-fluid pb-5" style="max-width: 70rem;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Log de auditoria</h5>
+    </div>
+
+    <form th:action="@{/auditoria}" method="get" class="row g-2 mb-3">
+        <div class="col-auto">
+            <select name="entidade" class="form-select form-select-sm">
+                <option value="" th:selected="${entidade == null or entidade == ''}">Todas as entidades</option>
+                <option th:each="e : ${entidades}" th:value="${e}" th:text="${e}" th:selected="${entidade == e}"></option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <select name="acao" class="form-select form-select-sm">
+                <option value="" th:selected="${acao == null}">Todas as acoes</option>
+                <option th:each="a : ${acoes}" th:value="${a}" th:selected="${acao == a}"
+                        th:text="${a.name() == 'CRIACAO'} ? 'Criacao' : (${a.name() == 'EDICAO'} ? 'Edicao' : (${a.name() == 'EXCLUSAO'} ? 'Exclusao' : 'Visualizacao de senha'))">
+                </option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <select name="usuarioId" class="form-select form-select-sm">
+                <option value="" th:selected="${usuarioId == null}">Todos os funcionarios</option>
+                <option th:each="u : ${usuarios}" th:value="${u.id}" th:text="${u.nome}"
+                        th:selected="${usuarioId != null and usuarioId == u.id}"></option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <input type="date" name="dataInicio" th:value="${dataInicio}" class="form-control form-control-sm" title="De">
+        </div>
+        <div class="col-auto">
+            <input type="date" name="dataFim" th:value="${dataFim}" class="form-control form-control-sm" title="Ate">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-secondary btn-sm">Filtrar</button>
+            <a th:href="@{/auditoria}" class="btn btn-outline-secondary btn-sm">Limpar</a>
+        </div>
+    </form>
+
+    <p class="text-muted small" th:if="${logs.size() >= 500}">
+        Mostrando as 500 entradas mais recentes que batem com o filtro. Para ver mais, estreite o filtro (periodo, funcionario, etc).
+    </p>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Data/hora</th>
+                    <th>Funcionario</th>
+                    <th>Acao</th>
+                    <th>Entidade</th>
+                    <th>ID</th>
+                    <th>Detalhes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="log : ${logs}">
+                    <td th:text="${#temporals.format(log.dataHora, 'dd/MM/yyyy HH:mm:ss')}"></td>
+                    <td th:text="${log.usuario != null ? log.usuario.nome : '-'}"></td>
+                    <td>
+                        <span class="badge"
+                              th:classappend="${log.acao.name() == 'CRIACAO'} ? 'text-bg-success' : (${log.acao.name() == 'EDICAO'} ? 'text-bg-primary' : (${log.acao.name() == 'EXCLUSAO'} ? 'text-bg-danger' : 'text-bg-warning'))"
+                              th:text="${log.acao.name() == 'CRIACAO'} ? 'Criacao' : (${log.acao.name() == 'EDICAO'} ? 'Edicao' : (${log.acao.name() == 'EXCLUSAO'} ? 'Exclusao' : 'Visualizacao de senha'))">
+                        </span>
+                    </td>
+                    <td th:text="${log.entidade}"></td>
+                    <td th:text="${log.entidadeId}"></td>
+                    <td th:text="${log.detalhes}"></td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(logs)}">
+                    <td colspan="6" class="text-center text-muted py-4">Nenhum registro encontrado.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script th:replace="~{fragments/navbar :: scriptTema}"></script>
+<script th:replace="~{fragments/navbar :: scriptNotificacoes}"></script>
+</body>
+</html>

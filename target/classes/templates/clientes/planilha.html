@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Clientes (planilha) - System LC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/tema.css" rel="stylesheet">
+    <style>
+        /* Cabecalho fixo ao rolar, do jeito que se espera de uma planilha. */
+        .tabela-planilha thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            white-space: nowrap;
+        }
+        .tabela-planilha td {
+            vertical-align: top;
+        }
+        .celula-lista {
+            max-width: 16rem;
+        }
+        .celula-descricao {
+            max-width: 14rem;
+        }
+    </style>
+</head>
+<body>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+
+<div class="container-fluid pb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Clientes (planilha)</h5>
+        <div class="d-flex gap-2">
+            <a th:href="@{/clientes(termo=${termo},estado=${estado},regimeTributario=${regimeTributario},ativo=${ativo},codigoSistemaExterno=${codigoSistemaExterno})}"
+               class="btn btn-outline-secondary btn-sm">
+                Ver como lista
+            </a>
+            <a th:href="@{/clientes/exportar/opcoes(termo=${termo},estado=${estado},regimeTributario=${regimeTributario},ativo=${ativo},codigoSistemaExterno=${codigoSistemaExterno})}"
+               class="btn btn-outline-secondary btn-sm">
+                Exportar Excel
+            </a>
+        </div>
+    </div>
+
+    <form th:action="@{/clientes/planilha}" method="get" class="row g-2 mb-2">
+        <div class="col-auto">
+            <input type="text" name="termo" th:value="${termo}" class="form-control form-control-sm"
+                   placeholder="Buscar por razao social ou nome fantasia" style="width: 20rem;">
+        </div>
+        <div class="col-auto">
+            <input type="text" name="estado" th:value="${estado}" class="form-control form-control-sm"
+                   placeholder="UF" maxlength="2" style="width: 5rem;">
+        </div>
+        <div class="col-auto">
+            <select name="regimeTributario" class="form-select form-select-sm">
+                <option value="" th:selected="${regimeTributario == null or regimeTributario == ''}">Todos os regimes</option>
+                <option value="Simples Nacional" th:selected="${regimeTributario == 'Simples Nacional'}">Simples Nacional</option>
+                <option value="Lucro Presumido" th:selected="${regimeTributario == 'Lucro Presumido'}">Lucro Presumido</option>
+                <option value="Lucro Real" th:selected="${regimeTributario == 'Lucro Real'}">Lucro Real</option>
+                <option value="MEI" th:selected="${regimeTributario == 'MEI'}">MEI</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <select name="ativo" class="form-select form-select-sm">
+                <option value="" th:selected="${ativo == null}">Todos os status</option>
+                <option value="true" th:selected="${ativo != null and ativo == true}">Somente ativos</option>
+                <option value="false" th:selected="${ativo != null and ativo == false}">Somente inativos</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <input type="text" name="codigoSistemaExterno" th:value="${codigoSistemaExterno}" class="form-control form-control-sm"
+                   placeholder="Codigo no outro sistema" style="width: 12rem;">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-secondary btn-sm">Filtrar</button>
+            <a th:href="@{/clientes/planilha}" class="btn btn-outline-secondary btn-sm">Limpar</a>
+        </div>
+    </form>
+
+    <div class="mb-2">
+        <input type="text" id="buscaRapida" class="form-control form-control-sm" style="max-width: 24rem;"
+               placeholder="Busca rapida nesta tabela (filtra sem recarregar a pagina)"
+               onkeyup="filtrarTabelaRapido()">
+    </div>
+
+    <div class="table-responsive" style="max-height: 75vh;">
+        <table class="table table-sm table-hover tabela-planilha" id="tabelaPlanilha">
+            <thead class="table-light">
+                <tr>
+                    <th>Razao social</th>
+                    <th>Nome fantasia</th>
+                    <th>CNPJ</th>
+                    <th>Cidade</th>
+                    <th>UF</th>
+                    <th>Regime</th>
+                    <th>Tipo de servico</th>
+                    <th>Descricao do servico</th>
+                    <th>Insc. municipal</th>
+                    <th>Insc. estadual</th>
+                    <th>Responsavel</th>
+                    <th>CNAEs</th>
+                    <th>Codigos de servico</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="cliente : ${clientes}">
+                    <td>
+                        <a th:href="@{/clientes/{id}(id=${cliente.id})}" th:text="${cliente.razaoSocial}">Empresa</a>
+                    </td>
+                    <td th:text="${cliente.nomeFantasia}"></td>
+                    <td th:text="${cliente.cnpj}"></td>
+                    <td th:text="${cliente.cidade}"></td>
+                    <td th:text="${cliente.estado}"></td>
+                    <td th:text="${cliente.regimeTributario}"></td>
+                    <td th:text="${cliente.tipoServico}"></td>
+                    <td class="celula-descricao small" th:text="${cliente.descricaoServico}"></td>
+                    <td th:text="${cliente.inscricaoMunicipal}"></td>
+                    <td th:text="${cliente.inscricaoEstadual}"></td>
+                    <td th:text="${cliente.responsavel != null ? cliente.responsavel.nome : ''}"></td>
+                    <td class="celula-lista small">
+                        <span th:each="cnae, it : ${cliente.cnaes}"
+                              th:text="${cnae.codigo} + (cnae.principal ? ' (principal)' : '') + (it.last ? '' : '; ')"></span>
+                    </td>
+                    <td class="celula-lista small">
+                        <span th:each="cod, it : ${cliente.codigosServico}"
+                              th:text="${cod.codigo} + (it.last ? '' : '; ')"></span>
+                    </td>
+                    <td>
+                        <span class="badge" th:classappend="${cliente.ativo} ? 'text-bg-success' : 'text-bg-secondary'"
+                              th:text="${cliente.ativo} ? 'Ativo' : 'Inativo'"></span>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(clientes)}">
+                    <td colspan="14" class="text-center text-muted py-4">Nenhum cliente encontrado.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="text-muted small">
+        <span th:text="${clientes.size()}">0</span> cliente(s) na tabela. A busca rapida acima so filtra o que ja
+        esta na tela -- para trazer mais clientes do banco, use os filtros logo acima da tabela.
+    </p>
+</div>
+
+<script th:replace="~{fragments/navbar :: scriptTema}"></script>
+<script th:replace="~{fragments/navbar :: scriptNotificacoes}"></script>
+<script>
+    // Filtro client-side simples: esconde as linhas que nao contem o texto
+    // digitado em nenhuma celula. So filtra o que ja veio do servidor --
+    // nao substitui os filtros de cima, que sao quem busca no banco.
+    function filtrarTabelaRapido() {
+        const termo = document.getElementById('buscaRapida').value.trim().toLowerCase();
+        const linhas = document.querySelectorAll('#tabelaPlanilha tbody tr');
+        linhas.forEach(function (linha) {
+            const texto = linha.textContent.toLowerCase();
+            linha.style.display = (termo === '' || texto.includes(termo)) ? '' : 'none';
+        });
+    }
+</script>
+</body>
+</html>

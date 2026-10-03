@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${cliente.razaoSocial}">Cliente</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/tema.css" rel="stylesheet">
+</head>
+<body>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+
+<div class="container pb-5" style="max-width: 45rem;">
+
+    <div class="alert alert-success alert-dismissible py-2" role="alert" th:if="${mensagemSucesso}">
+        <span th:text="${mensagemSucesso}"></span>
+        <ul class="mb-0 small" th:if="${errosImportacaoNfe}">
+            <li th:each="erro : ${errosImportacaoNfe}" th:text="${erro}"></li>
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h5 class="mb-0" th:text="${cliente.razaoSocial}">Empresa</h5>
+            <div class="text-muted small" th:if="${cliente.nomeFantasia}" th:text="${cliente.nomeFantasia}"></div>
+            <div class="text-muted small" th:if="${cliente.cnpj}" th:text="'CNPJ: ' + ${cliente.cnpj}"></div>
+        </div>
+        <div sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+            <a th:href="@{/clientes/{id}/editar(id=${cliente.id})}" class="btn btn-sm btn-outline-secondary">Editar</a>
+            <form th:action="@{/clientes/{id}/excluir(id=${cliente.id})}" method="post" class="d-inline"
+                  onsubmit="return confirm('Excluir este cliente? Essa acao nao pode ser desfeita.');">
+                <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
+            </form>
+        </div>
+    </div>
+
+    <table class="table table-sm w-auto">
+        <tbody>
+            <tr><th>Regime tributario</th><td th:text="${cliente.regimeTributario}">-</td></tr>
+            <tr><th>Cidade/UF</th><td th:text="${cliente.cidade} + ' / ' + ${cliente.estado}">-</td></tr>
+            <tr><th>Tipo de servico</th><td th:text="${cliente.tipoServico}">-</td></tr>
+            <tr><th>Descricao</th><td th:text="${cliente.descricaoServico}">-</td></tr>
+            <tr><th>Inscricao municipal</th><td th:text="${cliente.inscricaoMunicipal ?: '-'}">-</td></tr>
+            <tr><th>Inscricao estadual</th><td th:text="${cliente.inscricaoEstadual ?: '-'}">-</td></tr>
+            <tr><th>Codigo em outro sistema</th><td th:text="${cliente.codigoSistemaExterno ?: '-'}">-</td></tr>
+            <tr><th>Responsavel</th><td th:text="${cliente.responsavel != null ? cliente.responsavel.nome : '-'}">-</td></tr>
+            <tr><th>Status</th>
+                <td>
+                    <span class="badge" th:classappend="${cliente.ativo} ? 'text-bg-success' : 'text-bg-secondary'"
+                          th:text="${cliente.ativo} ? 'Ativo' : 'Inativo'"></span>
+                </td>
+            </tr>
+            <tr th:if="${cliente.atualizadoPor}">
+                <th>Ultima atualizacao</th>
+                <td>
+                    <span th:text="${#temporals.format(cliente.atualizadoEm, 'dd/MM/yyyy HH:mm')}"></span>
+                    por <span th:text="${cliente.atualizadoPor.nome}"></span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <!-- CNAEs -->
+    <h6>CNAEs</h6>
+    <table class="table table-sm">
+        <tbody>
+            <tr th:each="cnae : ${cliente.cnaes}">
+                <td th:text="${cnae.codigo}"></td>
+                <td th:text="${cnae.descricao}"></td>
+                <td><span class="badge text-bg-info" th:if="${cnae.principal}">Principal</span></td>
+                <td class="text-end" sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+                    <form th:action="@{/clientes/{id}/cnaes/{cnaeId}/excluir(id=${cliente.id},cnaeId=${cnae.id})}"
+                          method="post" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-link text-danger p-0">remover</button>
+                    </form>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(cliente.cnaes)}">
+                <td colspan="4" class="text-muted">Nenhum CNAE cadastrado.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <form th:action="@{/clientes/{id}/cnaes(id=${cliente.id})}" th:object="${novaCnae}" method="post"
+          class="row g-2 align-items-end mb-4" sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+        <div class="col-12">
+            <label class="form-label small mb-0">Buscar na lista de CNAEs</label>
+            <input type="text" list="listaCnaes" id="buscaCnae" class="form-control form-control-sm"
+                   placeholder="Digite o codigo ou a atividade -- ao escolher, preenche os campos abaixo"
+                   oninput="preencherCnaeEscolhido()" style="max-width: 30rem;">
+            <datalist id="listaCnaes">
+                <option th:each="c : ${cnaesReferencia}" th:value="${c.codigo} + ' - ' + ${c.descricao}"></option>
+            </datalist>
+            <div class="form-text">
+                Nao achou o CNAE na lista? Preencha "Codigo" e "Descricao" manualmente abaixo mesmo assim.
+            </div>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0">Codigo *</label>
+            <input type="text" id="campoCodigoCnae" th:field="*{codigo}" class="form-control form-control-sm" required style="width: 8rem;">
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0">Descricao</label>
+            <input type="text" id="campoDescricaoCnae" th:field="*{descricao}" class="form-control form-control-sm" style="width: 16rem;">
+        </div>
+        <div class="col-auto form-check">
+            <input type="checkbox" th:field="*{principal}" class="form-check-input">
+            <label class="form-check-label small">Principal</label>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-outline-primary">Adicionar CNAE</button>
+        </div>
+    </form>
+
+    <!-- Codigos de servico -->
+    <h6>Codigos de servico</h6>
+    <table class="table table-sm">
+        <tbody>
+            <tr th:each="codigo : ${cliente.codigosServico}">
+                <td th:text="${codigo.codigo}"></td>
+                <td th:text="${codigo.descricao}"></td>
+                <td class="text-end" sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+                    <form th:action="@{/clientes/{id}/codigos/{codigoId}/excluir(id=${cliente.id},codigoId=${codigo.id})}"
+                          method="post" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-link text-danger p-0">remover</button>
+                    </form>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(cliente.codigosServico)}">
+                <td colspan="3" class="text-muted">Nenhum codigo de servico cadastrado.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <form th:action="@{/clientes/{id}/codigos(id=${cliente.id})}" th:object="${novoCodigo}" method="post"
+          class="row g-2 align-items-end mb-4" sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+        <div class="col-auto">
+            <label class="form-label small mb-0">Codigo</label>
+            <input type="text" th:field="*{codigo}" class="form-control form-control-sm" required style="width: 8rem;">
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0">Descricao</label>
+            <input type="text" th:field="*{descricao}" class="form-control form-control-sm" style="width: 16rem;">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-outline-primary">Adicionar codigo</button>
+        </div>
+    </form>
+
+    <!-- Credenciais de portais: ver a senha e liberado para qualquer funcionario
+         (uso interno da empresa). So adicionar/remover credencial continua
+         restrito a quem cuida disso (ver os botoes marcados abaixo). -->
+    <div>
+        <hr>
+        <h6>Credenciais de portais</h6>
+        <table class="table table-sm">
+            <tbody>
+                <tr th:each="cred : ${credenciais}">
+                    <td>
+                        <strong th:text="${cred.sistema}"></strong>
+                        <div class="text-muted small" th:if="${cred.urlPortal}">
+                            <a th:href="${cred.urlPortal}" target="_blank" rel="noopener" th:text="${cred.urlPortal}"></a>
+                        </div>
+                        <div class="text-muted small" th:if="${cred.observacoes}" th:text="${cred.observacoes}"></div>
+                    </td>
+                    <td th:text="${cred.usuarioPortal}"></td>
+                    <td style="min-width: 9rem;">
+                        <span th:if="${credencialRevelada != null and credencialRevelada == cred.id}"
+                              class="fw-bold" th:text="${senhaRevelada}"></span>
+                        <span th:unless="${credencialRevelada != null and credencialRevelada == cred.id}"
+                              class="text-muted">••••••••</span>
+                    </td>
+                    <td class="text-end">
+                        <form th:action="@{/credenciais/{id}/revelar(id=${cred.id})}" method="post" class="d-inline">
+                            <input type="hidden" name="clienteId" th:value="${cliente.id}">
+                            <button type="submit" class="btn btn-sm btn-link p-0">revelar</button>
+                        </form>
+                        <form th:action="@{/clientes/{id}/credenciais/{credId}/excluir(id=${cliente.id},credId=${cred.id})}"
+                              method="post" class="d-inline" sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR_SENHAS')">
+                            <button type="submit" class="btn btn-sm btn-link text-danger p-0">remover</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(credenciais)}">
+                    <td colspan="4" class="text-muted">Nenhuma credencial cadastrada.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <form th:action="@{/clientes/{id}/credenciais(id=${cliente.id})}" th:object="${novaCredencial}" method="post"
+              class="row g-2 align-items-end mb-4" sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR_SENHAS')">
+            <div class="col-auto">
+                <label class="form-label small mb-0">Sistema</label>
+                <input type="text" th:field="*{sistema}" class="form-control form-control-sm" required
+                       placeholder="Ex: Giss Online" style="width: 10rem;">
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">URL do portal</label>
+                <input type="text" th:field="*{urlPortal}" class="form-control form-control-sm" style="width: 14rem;">
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Usuario</label>
+                <input type="text" th:field="*{usuarioPortal}" class="form-control form-control-sm" style="width: 10rem;">
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Senha</label>
+                <input type="password" th:field="*{senha}" class="form-control form-control-sm" required style="width: 10rem;">
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Observacoes</label>
+                <input type="text" th:field="*{observacoes}" class="form-control form-control-sm" style="width: 12rem;">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-outline-primary">Adicionar credencial</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Anexos: ver a lista/baixar e liberado pra qualquer funcionario; adicionar/remover
+         segue a mesma regra de quem pode editar o cadastro do cliente. -->
+    <div>
+        <hr>
+        <h6>Anexos</h6>
+        <table class="table table-sm">
+            <tbody>
+                <tr th:each="anexo : ${anexos}">
+                    <td>
+                        <a th:href="@{/anexos/{id}/baixar(id=${anexo.id})}" th:text="${anexo.nomeArquivo}"></a>
+                        <div class="text-muted small">
+                            <span th:text="${anexo.tamanhoBytes / 1024} + ' KB'"></span>
+                            <span th:if="${anexo.criadoPor != null}" th:text="' - enviado por ' + ${anexo.criadoPor.nome}"></span>
+                            <span th:if="${anexo.criadoEm != null}" th:text="' em ' + ${#temporals.format(anexo.criadoEm, 'dd/MM/yyyy')}"></span>
+                        </div>
+                    </td>
+                    <td class="text-end" sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+                        <form th:action="@{/anexos/{id}/excluir(id=${anexo.id})}" method="post" class="d-inline"
+                              onsubmit="return confirm('Excluir este anexo? Essa acao nao pode ser desfeita.');">
+                            <input type="hidden" name="clienteId" th:value="${cliente.id}">
+                            <button type="submit" class="btn btn-sm btn-link text-danger p-0">remover</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(anexos)}">
+                    <td class="text-muted">Nenhum anexo cadastrado.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <form th:action="@{/clientes/{id}/anexos(id=${cliente.id})}" method="post" enctype="multipart/form-data"
+              class="row g-2 align-items-end mb-4" sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+            <div class="col-auto">
+                <label class="form-label small mb-0">Arquivo (ate 10 MB)</label>
+                <input type="file" name="arquivo" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-outline-primary">Enviar anexo</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Fornecedores (Fase 2 do modulo de reforma tributaria): so um alerta
+         basico de regularidade (situacao cadastral na Receita) -- ainda nao
+         calcula credito real, isso fica pra quando tiver leitura de XML de NF-e. -->
+    <div>
+        <hr>
+        <h6>Fornecedores <span class="text-muted small">(situação cadastral, Fase 2 da reforma tributária)</span></h6>
+        <table class="table table-sm">
+            <tbody>
+                <tr th:each="fornecedor : ${fornecedores}">
+                    <td>
+                        <strong th:text="${fornecedor.razaoSocial ?: fornecedor.cnpj}"></strong>
+                        <div class="text-muted small" th:if="${fornecedor.razaoSocial}" th:text="${fornecedor.cnpj}"></div>
+                        <div class="text-muted small" th:if="${fornecedor.regimeTributario}" th:text="${fornecedor.regimeTributario}"></div>
+                    </td>
+                    <td style="min-width: 9rem;">
+                        <span class="badge text-bg-secondary" th:if="${fornecedor.situacaoCadastral == null}">
+                            Nao consultado
+                        </span>
+                        <span class="badge text-bg-success" th:if="${fornecedor.situacaoCadastral != null and fornecedor.regular}">
+                            <span th:text="${fornecedor.situacaoCadastral}"></span>
+                        </span>
+                        <span class="badge text-bg-danger" th:if="${fornecedor.situacaoCadastral != null and !fornecedor.regular}">
+                            <span th:text="${fornecedor.situacaoCadastral}"></span> -- risco
+                        </span>
+                    </td>
+                    <td class="text-end" sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+                        <form th:action="@{/fornecedores/{id}/reconsultar(id=${fornecedor.id})}" method="post" class="d-inline">
+                            <input type="hidden" name="clienteId" th:value="${cliente.id}">
+                            <button type="submit" class="btn btn-sm btn-link p-0">reconsultar</button>
+                        </form>
+                        <form th:action="@{/fornecedores/{id}/excluir(id=${fornecedor.id})}" method="post" class="d-inline"
+                              onsubmit="return confirm('Remover este fornecedor?');">
+                            <input type="hidden" name="clienteId" th:value="${cliente.id}">
+                            <button type="submit" class="btn btn-sm btn-link text-danger p-0">remover</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(fornecedores)}">
+                    <td class="text-muted">Nenhum fornecedor cadastrado.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <form th:action="@{/clientes/{id}/fornecedores(id=${cliente.id})}" method="post"
+              class="row g-2 align-items-end mb-4" sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+            <div class="col-auto">
+                <label class="form-label small mb-0">CNPJ do fornecedor</label>
+                <input type="text" name="cnpj" class="form-control form-control-sm" required
+                       placeholder="00.000.000/0000-00" style="width: 14rem;">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-outline-primary">Adicionar fornecedor</button>
+            </div>
+            <div class="col-12 form-text">
+                A situação cadastral é consultada automaticamente ao adicionar (fonte: BrasilAPI/Receita Federal).
+            </div>
+        </form>
+    </div>
+
+    <!-- Credito tributario via NF-e (Fase 3 do modulo de reforma tributaria):
+         importa XML de NF-e de entrada e calcula credito de ICMS/PIS/COFINS
+         por uma regra generica (ver RegrasCreditoTributario) -- ponto de
+         partida ajustavel, nao substitui analise tributaria especifica. -->
+    <div>
+        <hr>
+        <h6>Créditos tributários <span class="text-muted small">(NF-e de entrada, Fase 3 da reforma tributária)</span></h6>
+        <p class="text-muted small">
+            Estimativa calculada por uma regra genérica de CFOP/CST — não substitui uma análise tributária específica do cliente.
+        </p>
+
+        <form method="get" th:action="@{/clientes/{id}(id=${cliente.id})}" class="row g-2 align-items-end mb-3">
+            <div class="col-auto">
+                <label class="form-label small mb-0">De</label>
+                <input type="date" name="dataInicio" class="form-control form-control-sm" th:value="${periodoInicio}">
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Até</label>
+                <input type="date" name="dataFim" class="form-control form-control-sm" th:value="${periodoFim}">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Filtrar período</button>
+            </div>
+        </form>
+
+        <table class="table table-sm w-auto">
+            <tbody>
+                <tr><th>Notas no período</th><td th:text="${resumoCredito.quantidadeNotas}">0</td></tr>
+                <tr><th>Crédito ICMS</th><td th:text="${#numbers.formatDecimal(resumoCredito.totalCreditoIcms, 1, 2)}">0,00</td></tr>
+                <tr><th>Crédito PIS</th><td th:text="${#numbers.formatDecimal(resumoCredito.totalCreditoPis, 1, 2)}">0,00</td></tr>
+                <tr><th>Crédito COFINS</th><td th:text="${#numbers.formatDecimal(resumoCredito.totalCreditoCofins, 1, 2)}">0,00</td></tr>
+                <tr><th>Total estimado</th><td><strong th:text="${#numbers.formatDecimal(resumoCredito.totalCreditoGeral, 1, 2)}">0,00</strong></td></tr>
+            </tbody>
+        </table>
+
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Nota</th>
+                    <th>Fornecedor</th>
+                    <th>Emissão</th>
+                    <th class="text-end">Valor</th>
+                    <th class="text-end">Crédito</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="nota : ${notasFiscais}">
+                    <td th:text="${nota.numero}"></td>
+                    <td>
+                        <span th:text="${nota.fornecedorRazaoSocial ?: nota.fornecedorCnpj}"></span>
+                    </td>
+                    <td th:text="${nota.dataEmissao}"></td>
+                    <td class="text-end" th:text="${#numbers.formatDecimal(nota.valorTotalNota, 1, 2)}"></td>
+                    <td class="text-end" th:text="${#numbers.formatDecimal(nota.totalCreditoGeral, 1, 2)}"></td>
+                    <td class="text-end" sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+                        <form th:action="@{/notas-fiscais/{id}/excluir(id=${nota.id})}" method="post" class="d-inline"
+                              onsubmit="return confirm('Remover esta nota fiscal?');">
+                            <input type="hidden" name="clienteId" th:value="${cliente.id}">
+                            <button type="submit" class="btn btn-sm btn-link text-danger p-0">remover</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(notasFiscais)}">
+                    <td class="text-muted" colspan="6">Nenhuma NF-e importada ainda.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <form th:action="@{/clientes/{id}/notas-fiscais/importar(id=${cliente.id})}" method="post"
+              enctype="multipart/form-data" class="row g-2 align-items-end mb-4"
+              sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+            <div class="col-auto">
+                <label class="form-label small mb-0">Arquivos XML de NF-e (ou .zip com vários)</label>
+                <input type="file" name="arquivos" class="form-control form-control-sm" multiple accept=".xml,.zip" required>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-outline-primary">Importar NF-e</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Faturamento historico (Fase 4 do modulo de reforma tributaria): base
+         pra comparar regimes tributarios (Simples/Presumido/Real/Hibrido).
+         NF-e de venda alimenta o calculo automatico por ano; o valor manual
+         serve pra anos anteriores ao sistema ou pra corrigir/complementar. -->
+    <div>
+        <hr>
+        <h6>Faturamento histórico <span class="text-muted small">(Fase 4 da reforma tributária)</span></h6>
+        <a th:href="@{/clientes/{id}/comparativo-regime(id=${cliente.id})}" class="btn btn-sm btn-outline-primary mb-2">Ver comparativo de regime tributário →</a>
+
+        <table class="table table-sm w-auto">
+            <thead>
+                <tr>
+                    <th>Ano</th>
+                    <th class="text-end">Calculado (NF-e venda)</th>
+                    <th class="text-end">Manual</th>
+                    <th class="text-end">Valor considerado</th>
+                    <th sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="item : ${historicoFaturamento}">
+                    <td th:text="${item.ano}"></td>
+                    <td class="text-end">
+                        <span th:text="${#numbers.formatDecimal(item.valorCalculadoNfe, 1, 2)}"></span>
+                        <span class="text-muted small" th:if="${item.quantidadeNotasSaida > 0}" th:text="'(' + ${item.quantidadeNotasSaida} + ' notas)'"></span>
+                    </td>
+                    <td class="text-end" th:text="${item.valorManual != null ? #numbers.formatDecimal(item.valorManual, 1, 2) : '-'}"></td>
+                    <td class="text-end"><strong th:text="${#numbers.formatDecimal(item.valorConsiderado, 1, 2)}"></strong></td>
+                    <td sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+                        <form th:action="@{/clientes/{id}/faturamento(id=${cliente.id})}" method="post" class="d-flex gap-1">
+                            <input type="hidden" name="ano" th:value="${item.ano}">
+                            <input type="number" step="0.01" name="valor" class="form-control form-control-sm" style="width: 8rem;"
+                                   placeholder="informar" th:value="${item.valorManual}">
+                            <button type="submit" class="btn btn-sm btn-link p-0">salvar</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(historicoFaturamento)}">
+                    <td class="text-muted" colspan="5">Nenhum dado de faturamento ainda.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Nota (venda)</th>
+                    <th>Cliente final</th>
+                    <th>Emissão</th>
+                    <th class="text-end">Valor</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="nota : ${notasFiscaisSaida}">
+                    <td th:text="${nota.numero}"></td>
+                    <td th:text="${nota.destinatarioRazaoSocial ?: nota.destinatarioCnpj}"></td>
+                    <td th:text="${nota.dataEmissao}"></td>
+                    <td class="text-end" th:text="${#numbers.formatDecimal(nota.valorTotalNota, 1, 2)}"></td>
+                    <td class="text-end" sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+                        <form th:action="@{/notas-fiscais-saida/{id}/excluir(id=${nota.id})}" method="post" class="d-inline"
+                              onsubmit="return confirm('Remover esta nota fiscal de venda?');">
+                            <input type="hidden" name="clienteId" th:value="${cliente.id}">
+                            <button type="submit" class="btn btn-sm btn-link text-danger p-0">remover</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(notasFiscaisSaida)}">
+                    <td class="text-muted" colspan="5">Nenhuma NF-e de venda importada ainda.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <form th:action="@{/clientes/{id}/notas-fiscais-saida/importar(id=${cliente.id})}" method="post"
+              enctype="multipart/form-data" class="row g-2 align-items-end mb-4"
+              sec:authorize="hasAnyRole('ADMINISTRADOR','EDITOR','EDITOR_SENHAS')">
+            <div class="col-auto">
+                <label class="form-label small mb-0">Arquivos XML de NF-e de venda (ou .zip com vários)</label>
+                <input type="file" name="arquivos" class="form-control form-control-sm" multiple accept=".xml,.zip" required>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-outline-primary">Importar NF-e de venda</button>
+            </div>
+        </form>
+    </div>
+
+    <a th:href="@{/clientes}" class="btn btn-sm btn-outline-secondary">&larr; Voltar para a lista</a>
+</div>
+
+<script th:replace="~{fragments/navbar :: scriptTema}"></script>
+<script th:replace="~{fragments/navbar :: scriptNotificacoes}"></script>
+<script>
+    // So preenche Codigo/Descricao quando o valor digitado bate EXATAMENTE
+    // com uma opcao real da lista (evita preencher com lixo se a pessoa
+    // digitar um texto livre que por acaso contenha " - ").
+    function preencherCnaeEscolhido() {
+        const valor = document.getElementById('buscaCnae').value;
+        const opcoes = document.getElementById('listaCnaes').options;
+        for (let i = 0; i < opcoes.length; i++) {
+            if (opcoes[i].value === valor) {
+                const partes = valor.split(' - ');
+                document.getElementById('campoCodigoCnae').value = partes[0].trim();
+                document.getElementById('campoDescricaoCnae').value = partes.slice(1).join(' - ').trim();
+                break;
+            }
+        }
+    }
+</script>
+</body>
+</html>

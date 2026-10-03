@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Exportar clientes - System LC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/tema.css" rel="stylesheet">
+</head>
+<body>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+
+<div class="container pb-5" style="max-width: 30rem;">
+    <h5 class="mb-3">Exportar clientes</h5>
+    <p class="text-muted small">
+        Razão Social é sempre incluída. Marque só o que você quer ver na planilha.
+    </p>
+
+    <form th:action="@{/clientes/exportar}" method="get">
+        <input type="hidden" name="termo" th:value="${termo}">
+        <input type="hidden" name="estado" th:value="${estado}">
+        <input type="hidden" name="regimeTributario" th:value="${regimeTributario}">
+        <input type="hidden" name="ativo" th:value="${ativo}">
+        <input type="hidden" name="codigoSistemaExterno" th:value="${codigoSistemaExterno}">
+
+        <div class="form-check" th:each="coluna : ${colunasDisponiveis}">
+            <input class="form-check-input" type="checkbox" name="colunas"
+                   th:value="${coluna}" th:id="${'col-' + coluna}" checked>
+            <label class="form-check-label" th:for="${'col-' + coluna}" th:text="${coluna.rotulo}"></label>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Baixar planilha</button>
+        <a th:href="@{/clientes}" class="btn btn-outline-secondary mt-3">Cancelar</a>
+    </form>
+</div>
+
+<script th:replace="~{fragments/navbar :: scriptTema}"></script>
+<script th:replace="~{fragments/navbar :: scriptNotificacoes}"></script>
+</body>
+</html>

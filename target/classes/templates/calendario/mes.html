@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Calendario - System LC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/tema.css" rel="stylesheet">
+    <style>
+        .grade-calendario { table-layout: fixed; }
+        .grade-calendario td {
+            height: 7rem;
+            vertical-align: top;
+            padding: 0.35rem;
+            width: 14.28%;
+        }
+        .dia-numero { font-size: 0.85rem; }
+        .dia-fora-do-mes .dia-numero { opacity: 0.35; }
+        .dia-hoje .dia-numero {
+            display: inline-block;
+            background: var(--bs-primary);
+            color: #fff;
+            border-radius: 50%;
+            width: 1.5rem;
+            height: 1.5rem;
+            text-align: center;
+            line-height: 1.5rem;
+        }
+        .evento-badge {
+            display: block;
+            font-size: 0.72rem;
+            padding: 0.05rem 0.35rem;
+            margin-bottom: 0.15rem;
+            border-radius: 0.25rem;
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+
+<div class="container-fluid pb-5" style="max-width: 70rem;">
+    <div class="alert alert-danger py-2" th:if="${erroCalendario}" th:text="${erroCalendario}"></div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <a th:href="@{/calendario(ano=${mesAnterior.year},mes=${mesAnterior.monthValue})}"
+               class="btn btn-sm btn-outline-secondary">&laquo;</a>
+            <h5 class="mb-0" th:text="${nomeMes} + ' ' + ${mesAtual.year}">Mes</h5>
+            <a th:href="@{/calendario(ano=${proximoMes.year},mes=${proximoMes.monthValue})}"
+               class="btn btn-sm btn-outline-secondary">&raquo;</a>
+            <a th:href="@{/calendario}" class="btn btn-sm btn-outline-secondary">Hoje</a>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small" th:if="${!administrador}">Mostrando so os seus eventos</span>
+            <span class="text-muted small" th:if="${administrador}">Mostrando eventos de todos os funcionarios</span>
+            <a th:href="@{/calendario/novo}" class="btn btn-primary btn-sm">+ Novo evento</a>
+        </div>
+    </div>
+
+    <div class="d-flex gap-3 mb-2 small text-muted">
+        <span><span class="badge text-bg-danger">&nbsp;</span> Entrega de imposto</span>
+        <span><span class="badge text-bg-primary">&nbsp;</span> Reuniao</span>
+        <span><span class="badge text-bg-secondary">&nbsp;</span> Evento</span>
+        <span>[R] = recorrente (repete todo mes)</span>
+    </div>
+
+    <table class="table table-bordered grade-calendario">
+        <thead>
+            <tr class="text-center small">
+                <th>Dom</th>
+                <th>Seg</th>
+                <th>Ter</th>
+                <th>Qua</th>
+                <th>Qui</th>
+                <th>Sex</th>
+                <th>Sab</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="semana : ${semanas}">
+                <td th:each="dia : ${semana}"
+                    th:with="foraDoMes=${dia.month != mesAtual.month}, ehHoje=${dia == hoje}"
+                    th:class="${foraDoMes} ? 'dia-fora-do-mes' : (${ehHoje} ? 'dia-hoje' : '')">
+                    <div>
+                        <a class="dia-numero text-decoration-none"
+                           th:href="@{/calendario/novo(data=${dia})}"
+                           th:text="${dia.dayOfMonth}">1</a>
+                    </div>
+                    <div>
+                        <a th:each="evento : ${eventosPorDia.get(dia)}"
+                           th:href="@{/calendario/{id}/editar(id=${evento.id})}"
+                           class="evento-badge text-white"
+                           th:classappend="${evento.tipo.name() == 'ENTREGA_IMPOSTO'} ? 'bg-danger' : (${evento.tipo.name() == 'REUNIAO'} ? 'bg-primary' : 'bg-secondary')"
+                           th:text="${(evento.recorrente ? '[R] ' : '') + (evento.horario != null ? #temporals.format(evento.horario, 'HH:mm') + ' ' : '') + evento.titulo}">
+                            Evento
+                        </a>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script th:replace="~{fragments/navbar :: scriptTema}"></script>
+<script th:replace="~{fragments/navbar :: scriptNotificacoes}"></script>
+</body>
+</html>

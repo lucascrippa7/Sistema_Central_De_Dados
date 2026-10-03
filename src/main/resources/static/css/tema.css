@@ -1,0 +1,102 @@
+/* Ajustes finos de tema. O Bootstrap 5.3 ja controla claro/escuro
+   via [data-bs-theme="dark"] no elemento <html> (definido no dashboard.html). */
+
+body {
+    min-height: 100vh;
+}
+
+/* ==========================================================
+   Barra de navegacao "System LC" -- visual proprio, fixo (nao
+   segue o alternador claro/escuro do resto da pagina, igual a
+   maioria dos sistemas de gestao usa uma barra de marca fixa).
+   ========================================================== */
+:root {
+    --lc-navy: #101828;
+    --lc-navy-2: #1d2939;
+    --lc-accent: #06b6d4;
+    --lc-accent-dark: #0e7490;
+}
+
+.navbar-lc {
+    background: var(--lc-navy);
+    border-bottom: 2px solid var(--lc-accent);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, .25);
+    padding-top: .55rem;
+    padding-bottom: .55rem;
+}
+
+.navbar-lc .navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: .02em;
+    color: #fff !important;
+}
+
+.navbar-lc .marca-selo {
+    width: 2rem;
+    height: 2rem;
+    border-radius: .5rem;
+    background: var(--lc-accent);
+    color: var(--lc-navy);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .75rem;
+    font-weight: 800;
+    letter-spacing: .01em;
+    flex-shrink: 0;
+}
+
+.navbar-lc .nav-link {
+    color: rgba(255, 255, 255, .72) !important;
+    font-weight: 500;
+    font-size: .92rem;
+    padding: .4rem .8rem !important;
+    border-radius: .4rem;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+.navbar-lc .nav-link:hover {
+    color: #fff !important;
+    background: rgba(255, 255, 255, .08);
+}
+
+.navbar-lc .nav-link.active {
+    color: #fff !important;
+    background: rgba(255, 255, 255, .13);
+}
+
+.navbar-lc .texto-usuario {
+    color: rgba(255, 255, 255, .62);
+}
+
+.navbar-lc .btn-navbar {
+    color: rgba(255, 255, 255, .85);
+    border-color: rgba(255, 255, 255, .28);
+    background: transparent;
+}
+
+.navbar-lc .btn-navbar:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, .55);
+    background: rgba(255, 255, 255, .1);
+}
+
+.navbar-lc .btn-navbar-danger {
+    color: #ffb4a8;
+    border-color: rgba(255, 130, 110, .4);
+    background: transparent;
+}
+
+.navbar-lc .btn-navbar-danger:hover {
+    color: #fff;
+    background: #c0392b;
+    border-color: #c0392b;
+}
+
+.navbar-lc #badgeNotificacoes {
+    box-shadow: 0 0 0 2px var(--lc-navy);
+}

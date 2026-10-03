@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="lista">
+    <h6 class="dropdown-header">Notificacoes de hoje</h6>
+    <a th:each="n : ${notificacoes}"
+       class="dropdown-item small py-2"
+       th:href="@{/calendario/{id}/editar(id=${n.id})}">
+        <div class="fw-bold" th:text="${n.titulo}">Titulo</div>
+        <div class="text-muted">
+            <span th:text="${#temporals.format(n.data, 'dd/MM/yyyy')}"></span>
+            <span th:if="${n.clienteNome}" th:text="' - ' + ${n.clienteNome}"></span>
+        </div>
+    </a>
+    <span th:if="${#lists.isEmpty(notificacoes)}" class="dropdown-item-text text-muted small">
+        Nada por hoje.
+    </span>
+</div>
+</body>
+</html>
